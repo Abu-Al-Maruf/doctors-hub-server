@@ -30,28 +30,41 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
 
-    const userCollection = client.db("doctors_hub").collection("doctors");
+    const userCollection = client.db("doctors_hub").collection("users");
+    const doctorCollection = client.db("doctors_hub").collection("doctors");
     const reviewCollection = client.db("doctors_hub").collection("reviews");
 
-    // doctors related api
+    // users related api --------->
+    app.post("/user", async (req, res) => {
+      const user = req.body;
+      const existingUser = await userCollection.findOne({ email: user.email });
+      if (existingUser) {
+        return res.send({
+          message: "user already exists",
+          insertedId: null,
+        });
+      }
+      const result = await userCollection.insertOne(user);
+      res.send(result);
+    });
+
+    // doctors related api --------->
     app.get("/doctors", async (req, res) => {
-      const result = await userCollection.find().toArray();
+      const result = await doctorCollection.find().toArray();
       res.send(result);
     });
     app.get("/doctors/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
-      const result = await userCollection.findOne(query);
+      const result = await doctorCollection.findOne(query);
       res.send(result);
     });
 
-    // reviews related api
+    // reviews related api ---------->
     app.get("/reviews", async (req, res) => {
       const result = await reviewCollection.find().toArray();
       res.send(result);
     });
-
-
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
