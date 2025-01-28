@@ -3,6 +3,7 @@ const cors = require("cors");
 const app = express();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
+const jwt = require("jsonwebtoken");
 const port = process.env.PORT || 7000;
 
 // middlewares
@@ -33,8 +34,40 @@ async function run() {
     const userCollection = client.db("doctors_hub").collection("users");
     const doctorCollection = client.db("doctors_hub").collection("doctors");
     const reviewCollection = client.db("doctors_hub").collection("reviews");
+    const serviceCollection = client.db("doctors_hub").collection("services");
 
-    // users related api --------->
+    // middleware
+    const verifyToken = (req, res, next) => {
+      if (!req.headers.authorization) {
+        return res.status(401).send({ message: "unauthorize access" });
+      }
+      const token = req.headers.authorization.split(" ")[1];
+
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+          return res.status(401).send({ message: "unauthorize access" });
+        }
+        req.decoded = decoded;
+        next();
+      });
+    };
+
+    // ------ jwt related api --------->
+    app.post("/jwt", async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "5h",
+      });
+      res.send({ token });
+    });
+
+    // ------ users related api --------->
+    app.get("/users", verifyToken, async (req, res) => {
+      console.log(req.decoded);
+      const result = await userCollection.find().toArray();
+      res.send(result);
+    });
+
     app.post("/user", async (req, res) => {
       const user = req.body;
       const existingUser = await userCollection.findOne({ email: user.email });
@@ -48,7 +81,7 @@ async function run() {
       res.send(result);
     });
 
-    // doctors related api --------->
+    //------  doctors related api --------->
     app.get("/doctors", async (req, res) => {
       const result = await doctorCollection.find().toArray();
       res.send(result);
@@ -60,9 +93,15 @@ async function run() {
       res.send(result);
     });
 
-    // reviews related api ---------->
+    // ------ reviews related api ---------->
     app.get("/reviews", async (req, res) => {
       const result = await reviewCollection.find().toArray();
+      res.send(result);
+    });
+
+    //------  services related api --------->
+    app.get("/services", async (req, res) => {
+      const result = await serviceCollection.find().toArray();
       res.send(result);
     });
 
